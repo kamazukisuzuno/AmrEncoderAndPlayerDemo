@@ -205,8 +205,8 @@ public class AmrAudioEncoder {
 
 			skipAmrHead(dataInput);
 
-			final int SEND_FRAME_COUNT_ONE_TIME = 10;// 每次发送10帧的数据，1帧大约32B
-			// AMR格式见博客：http://blog.csdn.net/dinggo/article/details/1966444
+			final int SEND_FRAME_COUNT_ONE_TIME = 10;// 10frames send per time，1frame 32B
+			// AMR格式 http://blog.csdn.net/dinggo/article/details/1966444
 			final int BLOCK_SIZE[] = { 12, 13, 15, 17, 19, 20, 26, 31, 5, 0, 0, 0, 0, 0, 0, 0 };
 
 			byte[] sendBuffer = new byte[1024];

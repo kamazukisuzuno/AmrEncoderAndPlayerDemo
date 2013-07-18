@@ -4,7 +4,7 @@ package cn.edu.xmu.zgy.config;
 //Email: zgyulongfei@gmail.com
 
 public class CommonConfig {
-	public static String SERVER_IP_ADDRESS = "192.168.1.145";
+	public static String SERVER_IP_ADDRESS = "192.168.16.103";
 
 	public static final int AUDIO_SERVER_UP_PORT = 20086;
 	public static final int AUDIO_SERVER_DOWN_PORT = 20087;

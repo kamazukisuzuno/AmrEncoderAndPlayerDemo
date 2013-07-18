@@ -16,8 +16,6 @@ import android.net.LocalSocketAddress;
 import android.util.Log;
 import android.widget.Toast;
 
-//blog.csdn.net/zgyulongfei
-//Email: zgyulongfei@gmail.com
 
 public class AmrAudioEncoder {
 	private static final String TAG = "ArmAudioEncoder";
@@ -26,7 +24,7 @@ public class AmrAudioEncoder {
 
 	private Activity activity;
 
-	private MediaRecorder audioRecorder;
+	private MediaRecorder mediaRecorder;
 
 	private boolean isAudioRecording;
 
@@ -36,6 +34,10 @@ public class AmrAudioEncoder {
 	private AmrAudioEncoder() {
 	}
 
+    /**
+     * singleton method,return a instance of the class
+     * @return singleton instance of class
+     */
 	public static AmrAudioEncoder getArmAudioEncoderInstance() {
 		if (amrAudioEncoder == null) {
 			synchronized (AmrAudioEncoder.class) {
@@ -47,30 +49,37 @@ public class AmrAudioEncoder {
 		return amrAudioEncoder;
 	}
 
+    /**
+     * initialize an encoder
+     * @param activity
+     */
 	public void initArmAudioEncoder(Activity activity) {
 		this.activity = activity;
 		isAudioRecording = false;
 	}
 
+    /**
+     * check if encoder is ready,and start recording if is ready
+     */
 	public void start() {
 		if (activity == null) {
-			showToastText("音频编码器未初始化，请先执行init方法");
+			showToastText("activity null");
 			return;
 		}
 
 		if (isAudioRecording) {
-			showToastText("音频已经开始编码，无需再次编码");
+			showToastText("init already started");
 			return;
 		}
 
 		if (!initLocalSocket()) {
-			showToastText("本地服务开启失败");
+			showToastText("local service failed");
 			releaseAll();
 			return;
 		}
 
 		if (!initAudioRecorder()) {
-			showToastText("音频编码器初始化失败");
+			showToastText("init failed");
 			releaseAll();
 			return;
 		}
@@ -79,6 +88,11 @@ public class AmrAudioEncoder {
 		startAudioRecording();
 	}
 
+    /**
+     * initialize localsocket(after release existing localsocket) pair, include a serversocket and localsocket
+     * receiver is the localsocket,and sender is accepted from serversocket
+     * @return
+     */
 	private boolean initLocalSocket() {
 		boolean ret = true;
 		try {
@@ -103,66 +117,86 @@ public class AmrAudioEncoder {
 		return ret;
 	}
 
+    /**
+     * initialize and start media recoder
+     * @return
+     */
 	private boolean initAudioRecorder() {
-		if (audioRecorder != null) {
-			audioRecorder.reset();
-			audioRecorder.release();
+		if (mediaRecorder != null) {
+			mediaRecorder.reset();
+			mediaRecorder.release();
 		}
-		audioRecorder = new MediaRecorder();
-		audioRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-		audioRecorder.setOutputFormat(MediaRecorder.OutputFormat.RAW_AMR);
+		mediaRecorder = new MediaRecorder();
+		mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+		mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.RAW_AMR);
 		final int mono = 1;
-		audioRecorder.setAudioChannels(mono);
-		audioRecorder.setAudioSamplingRate(8000);
-		audioRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
-		audioRecorder.setOutputFile(sender.getFileDescriptor());
+		mediaRecorder.setAudioChannels(mono);
+		mediaRecorder.setAudioSamplingRate(8000);
+		mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
+		mediaRecorder.setOutputFile(sender.getFileDescriptor());
 
 		boolean ret = true;
 		try {
-			audioRecorder.prepare();
-			audioRecorder.start();
+			mediaRecorder.prepare();
+			mediaRecorder.start();
 		} catch (Exception e) {
 			releaseMediaRecorder();
-			showToastText("手机不支持录音此功能");
+			showToastText("amr not supported");
 			ret = false;
 		}
 		return ret;
 	}
 
+    /**
+     * start execute an AudioCaptureAndSend thread
+     */
 	private void startAudioRecording() {
 		new Thread(new AudioCaptureAndSendThread()).start();
 	}
 
+    /**
+     * release all resource and set flag isAudioRecording to false
+     */
 	public void stop() {
 		if (isAudioRecording) {
+            mediaRecorder.stop();
 			isAudioRecording = false;
 		}
 		releaseAll();
 	}
 
+    /**
+     * release media recoder,local socket and singleton instance     *
+     */
 	private void releaseAll() {
 		releaseMediaRecorder();
 		releaseLocalSocket();
 		amrAudioEncoder = null;
 	}
 
+    /**
+     *reset and release media recoder
+     */
 	private void releaseMediaRecorder() {
 		try {
-			if (audioRecorder == null) {
+			if (mediaRecorder == null) {
 				return;
 			}
 			if (isAudioRecording) {
-				audioRecorder.stop();
+				mediaRecorder.stop();
 				isAudioRecording = false;
 			}
-			audioRecorder.reset();
-			audioRecorder.release();
-			audioRecorder = null;
+			mediaRecorder.reset();
+			mediaRecorder.release();
+			mediaRecorder = null;
 		} catch (Exception err) {
 			Log.d(TAG, err.toString());
 		}
 	}
 
+    /**
+     * release locale socket
+     */
 	private void releaseLocalSocket() {
 		try {
 			if (sender != null) {
@@ -182,6 +216,7 @@ public class AmrAudioEncoder {
 		lss = null;
 	}
 
+
 	private boolean isAudioRecording() {
 		return isAudioRecording;
 	}
@@ -195,7 +230,7 @@ public class AmrAudioEncoder {
 			try {
 				sendAmrAudio();
 			} catch (Exception e) {
-				Log.e(TAG, "sendAmrAudio() 出错");
+				Log.e(TAG, "sendAmrAudio failed");
 			}
 		}
 
@@ -206,7 +241,7 @@ public class AmrAudioEncoder {
 			skipAmrHead(dataInput);
 
 			final int SEND_FRAME_COUNT_ONE_TIME = 10;// 10frames send per time，1frame 32B
-			// AMR格式 http://blog.csdn.net/dinggo/article/details/1966444
+			// http://blog.csdn.net/dinggo/article/details/1966444
 			final int BLOCK_SIZE[] = { 12, 13, 15, 17, 19, 20, 26, 31, 5, 0, 0, 0, 0, 0, 0, 0 };
 
 			byte[] sendBuffer = new byte[1024];
@@ -254,7 +289,7 @@ public class AmrAudioEncoder {
 					}
 				}
 			} catch (Exception e) {
-				Log.e(TAG, "read mdat error...");
+				Log.e(TAG, "read mdat error");
 			}
 		}
 
@@ -264,7 +299,7 @@ public class AmrAudioEncoder {
 				try {
 					numOfRead = dataInput.read(buffer, offset, length);
 					if (numOfRead == -1) {
-						Log.d(TAG, "amr...no data get wait for data coming.....");
+						Log.d(TAG, "amr no data get wait for data coming");
 						Thread.sleep(100);
 					} else {
 						offset += numOfRead;
@@ -274,7 +309,7 @@ public class AmrAudioEncoder {
 						}
 					}
 				} catch (Exception e) {
-					Log.e(TAG, "amr..error readSomeData");
+					Log.e(TAG, "amr error readSomeData");
 					break;
 				}
 			}
